@@ -5,12 +5,6 @@ import (
 )
 
 type (
-	Runes struct {
-		Primary   float64
-		Secondary float64
-		Runes     []float64
-	}
-
 	Preferences struct {
 		Champion map[string]Preference
 	}
@@ -42,6 +36,12 @@ type (
 	URF struct {
 		X string `json:"x"`
 		Y string `json:"y"`
+	}
+
+	Runes struct {
+		Primary   float64
+		Secondary float64
+		Runes     []float64
 	}
 
 	Champion struct {

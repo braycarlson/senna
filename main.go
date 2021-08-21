@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 	"reflect"
 	"strconv"
 	"strings"
@@ -14,8 +15,7 @@ import (
 )
 
 type (
-	Asol    = asol.Asol
-	Message = asol.Message
+	Asol = asol.Asol
 
 	Client struct {
 		*Asol
@@ -50,11 +50,26 @@ func NewSession() *Session {
 }
 
 func NewConfiguration() *Configuration {
-	file, err := ini.Load("config.ini")
+	_, err := os.OpenFile(
+		"config.ini",
+		os.O_RDWR|os.O_CREATE|os.O_EXCL,
+		0666,
+	)
 
-	if err != nil {
-		fmt.Printf(".ini file could not be read: %v", err)
-		return nil
+	file, _ := ini.Load("config.ini")
+
+	if err == nil {
+		file.NewSection("senna")
+		file.Section("senna").NewKey("api", "https://localhost.com:5000")
+		file.Section("senna").NewKey("autoaccept", "true")
+		file.Section("senna").NewKey("autorune", "true")
+		file.Section("senna").NewKey("autospell", "true")
+		file.Section("senna").NewKey("gametype", "aram")
+		file.Section("senna").NewKey("page", "senna")
+		file.Section("senna").NewKey("reverse", "false")
+		file.Section("senna").NewKey("version", "0.0.1")
+
+		err = file.SaveTo("config.ini")
 	}
 
 	section := file.Section("senna")
@@ -89,7 +104,6 @@ var (
 
 const (
 	ddragon = "https://ddragon.leagueoflegends.com"
-	preset  = 5
 )
 
 func onOpen(asol *Asol) {
@@ -101,8 +115,8 @@ func onReady(asol *Asol) {
 
 	var pages []model.Page
 
-	request, _ := asol.NewGetRequest("/lol-perks/v1/pages")
-	response, _ := asol.RawRiotRequest(request)
+	request, _ := asol.Get("/lol-perks/v1/pages")
+	response, _ := asol.RiotRequest(request)
 	json.Unmarshal(response, &pages)
 
 	for _, page := range pages {
@@ -112,14 +126,15 @@ func onReady(asol *Asol) {
 		}
 	}
 
-	var length int = len(pages)
+	preset := 5
+	length := len(pages)
 
 	if length > preset {
 		for index, page := range pages {
 			pageId := strconv.FormatFloat(page.Id, 'f', -1, 64)
 
 			if index < (length - preset) {
-				request, _ := asol.NewDeleteRequest(
+				request, _ := asol.Delete(
 					fmt.Sprintf("/lol-perks/v1/pages/%s", pageId),
 				)
 
@@ -132,8 +147,8 @@ func onReady(asol *Asol) {
 func onLogin(asol *Asol) {
 	fmt.Println("The client is logged in")
 
-	request, _ := asol.NewGetRequest("/lol-login/v1/session")
-	response, _ := asol.RawRiotRequest(request)
+	request, _ := asol.Get("/lol-login/v1/session")
+	response, _ := asol.RiotRequest(request)
 
 	var login model.Login
 	json.Unmarshal(response, &login)
@@ -163,43 +178,27 @@ func onReconnect(asol *Asol) {
 	fmt.Println("The client is reconnected")
 }
 
-func onRequest(uri string, status int) {
-	fmt.Println(
-		fmt.Sprintf("%d: %s", status, uri),
-	)
-}
-
-func onRequestError(uri string, status int) {
-	fmt.Println(
-		fmt.Sprintf("%d: %s", status, uri),
-	)
-}
-
 func onWebsocketError(error error) {
 	fmt.Println(error)
 }
 
-func onMatchFound(asol *Asol, message *Message) {
-	bytes, _ := json.Marshal(message.Data)
-
+func onMatchFound(asol *Asol, message []byte) {
 	var match model.MatchFound
-	json.Unmarshal(bytes, &match)
+	json.Unmarshal(message, &match)
 
 	if match.Data.PlayerResponse == "None" && match.Data.Timer == 1.0 {
 		time.Sleep(3000 * time.Millisecond)
 
 		fmt.Println("Accepting match...")
 
-		request, _ := asol.NewPostRequest("/lol-matchmaking/v1/ready-check/accept", nil)
+		request, _ := asol.Post("/lol-matchmaking/v1/ready-check/accept", nil)
 		asol.RiotRequest(request)
 	}
 }
 
-func onPhase(asol *Asol, message *Message) {
-	bytes, _ := json.Marshal(message.Data)
-
+func onPhase(asol *Asol, message []byte) {
 	var phase model.Phase
-	json.Unmarshal(bytes, &phase)
+	json.Unmarshal(message, &phase)
 
 	if phase.Data != "ChampSelect" {
 		client.mode = ""
@@ -210,10 +209,9 @@ func onPhase(asol *Asol, message *Message) {
 	}
 }
 
-func onSession(asol *Asol, message *Message) {
-	bytes, _ := json.Marshal(message.Data)
+func onSession(asol *Asol, message []byte) {
 	var championSelection model.ChampionSelection
-	json.Unmarshal(bytes, &championSelection)
+	json.Unmarshal(message, &championSelection)
 
 	phase := strings.ToLower(championSelection.Data.Timer.Phase)
 
@@ -222,8 +220,8 @@ func onSession(asol *Asol, message *Message) {
 	}
 
 	if reflect.ValueOf(client.mode).IsZero() {
-		request, _ := asol.NewGetRequest("/lol-gameflow/v1/session")
-		data, _ := asol.RawRiotRequest(request)
+		request, _ := asol.Get("/lol-gameflow/v1/session")
+		data, _ := asol.RiotRequest(request)
 
 		var gameflow model.Gameflow
 		json.Unmarshal(data, &gameflow)
@@ -241,7 +239,7 @@ func onSession(asol *Asol, message *Message) {
 
 			championId := strconv.FormatFloat(player.ChampionId, 'f', -1, 64)
 
-			if client.championId == championId || player.ChampionId == 0 {
+			if client.championId == championId || championId == "0" {
 				return
 			}
 
@@ -249,7 +247,7 @@ func onSession(asol *Asol, message *Message) {
 
 			// Delete the custom page
 			if !reflect.ValueOf(client.pageId).IsZero() {
-				request, _ := client.NewDeleteRequest(
+				request, _ := client.Delete(
 					fmt.Sprintf("/lol-perks/v1/pages/%s", client.pageId),
 				)
 
@@ -274,8 +272,8 @@ func onSession(asol *Asol, message *Message) {
 				url = fmt.Sprintf("%s/ranked/runes/%s", client.api, championId)
 			}
 
-			request, _ := client.NewGetRequest(url)
-			response, _ := client.RawWebRequest(request)
+			request, _ := client.Get(url)
+			response, _ := client.WebRequest(request)
 
 			var runes model.Runes
 			json.Unmarshal(response, &runes)
@@ -296,8 +294,8 @@ func onSession(asol *Asol, message *Message) {
 				"subStyleId":             runes.Secondary,
 			}
 
-			request, _ = asol.NewPostRequest("/lol-perks/v1/pages", payload)
-			_, err := asol.RawRiotRequest(request)
+			request, _ = asol.Post("/lol-perks/v1/pages", payload)
+			_, err := asol.RiotRequest(request)
 
 			if err != nil {
 				fmt.Println(err)
@@ -306,9 +304,9 @@ func onSession(asol *Asol, message *Message) {
 			// Pages
 			var pages []model.Page
 
-			request, _ = asol.NewGetRequest("/lol-perks/v1/pages")
-			data, _ := asol.RawRiotRequest(request)
-			json.Unmarshal(data, &pages)
+			request, _ = asol.Get("/lol-perks/v1/pages")
+			response, _ = asol.RiotRequest(request)
+			json.Unmarshal(response, &pages)
 
 			for _, page := range pages {
 				if client.pageName == page.Name {
@@ -339,8 +337,15 @@ func onSession(asol *Asol, message *Message) {
 			url = fmt.Sprintf("%s/ranked/skills/%s", client.api, client.championId)
 		}
 
-		request, _ := client.NewGetRequest(url)
+		request, _ := client.Get(url)
 		response, _ := client.WebRequest(request)
+
+		var skills []string
+		json.Unmarshal(response, &skills)
+
+		fmt.Println(
+			strings.Trim(fmt.Sprint(skills), "[]"),
+		)
 
 		// Itemset
 
@@ -359,20 +364,23 @@ func onSession(asol *Asol, message *Message) {
 			url = fmt.Sprintf("%s/ranked/sr/items/%s", client.api, client.championId)
 		}
 
-		request, _ = client.NewGetRequest(url)
+		request, _ = client.Get(url)
 		response, _ = client.WebRequest(request)
+
+		var itemset interface{}
+		json.Unmarshal(response, &itemset)
 
 		var payload = map[string]interface{}{
 			"accountId": client.accountId,
 		}
 
-		for k, v := range response.(map[string]interface{}) {
+		for k, v := range itemset.(map[string]interface{}) {
 			payload[k] = v
 		}
 
 		url = fmt.Sprintf("/lol-item-sets/v1/item-sets/%s/sets", client.accountId)
-		request, _ = client.NewPutRequest(url, payload)
-		client.RawRiotRequest(request)
+		request, _ = client.Put(url, payload)
+		client.RiotRequest(request)
 	}
 }
 
@@ -384,8 +392,6 @@ func main() {
 	client.OnClientClose(onClientClose)
 	client.OnWebsocketClose(onWebsocketClose)
 	client.OnReconnect(onReconnect)
-	client.OnRequest(onRequest)
-	client.OnRequestError(onRequestError)
 	client.OnWebsocketError(onWebsocketError)
 
 	if client.autoAccept {
