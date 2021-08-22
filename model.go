@@ -1,7 +1,25 @@
-package model
+package main
 
 import (
 	"encoding/json"
+)
+
+var (
+	Spells = map[string]float64{
+		"cleanse":     1,
+		"exhaust":     3,
+		"flash":       4,
+		"ghost":       6,
+		"heal":        7,
+		"ignite":      14,
+		"barrier":     21,
+		"clarity":     13,
+		"snowball":    32,
+		"smite":       11,
+		"teleport":    12,
+		"to the king": 30,
+		"poro toss":   31,
+	}
 )
 
 type (

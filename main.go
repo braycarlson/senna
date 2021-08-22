@@ -3,14 +3,13 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"os"
+	"log"
 	"reflect"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/braycarlson/asol"
-	"github.com/braycarlson/senna/model"
 	"github.com/go-ini/ini"
 )
 
@@ -22,77 +21,7 @@ type (
 		*Configuration
 		*Session
 	}
-
-	Configuration struct {
-		api        string
-		autoAccept bool
-		autoRune   bool
-		autoSpell  bool
-		gameType   string
-		pageName   string
-		reverse    bool
-		version    string
-	}
-
-	Session struct {
-		accountId    string
-		championId   string
-		championName string
-		mode         string
-		pageId       string
-		summonerId   string
-		username     string
-	}
 )
-
-func NewSession() *Session {
-	return &Session{}
-}
-
-func NewConfiguration() *Configuration {
-	_, err := os.OpenFile(
-		"config.ini",
-		os.O_RDWR|os.O_CREATE|os.O_EXCL,
-		0666,
-	)
-
-	file, _ := ini.Load("config.ini")
-
-	if err == nil {
-		file.NewSection("senna")
-		file.Section("senna").NewKey("api", "https://localhost.com:5000")
-		file.Section("senna").NewKey("autoaccept", "true")
-		file.Section("senna").NewKey("autorune", "true")
-		file.Section("senna").NewKey("autospell", "true")
-		file.Section("senna").NewKey("gametype", "aram")
-		file.Section("senna").NewKey("page", "senna")
-		file.Section("senna").NewKey("reverse", "false")
-		file.Section("senna").NewKey("version", "0.0.1")
-
-		err = file.SaveTo("config.ini")
-	}
-
-	section := file.Section("senna")
-	api := section.Key("api").String()
-	autoAccept, _ := section.Key("autoaccept").Bool()
-	autoRune, _ := section.Key("autorune").Bool()
-	autoSpell, _ := section.Key("autospell").Bool()
-	gameType := section.Key("gametype").String()
-	pageName := section.Key("page").String()
-	reverse, _ := section.Key("reverse").Bool()
-	version := section.Key("version").String()
-
-	return &Configuration{
-		api:        api,
-		autoAccept: autoAccept,
-		autoRune:   autoRune,
-		autoSpell:  autoSpell,
-		gameType:   gameType,
-		pageName:   pageName,
-		reverse:    reverse,
-		version:    version,
-	}
-}
 
 var (
 	client = &Client{
@@ -107,13 +36,29 @@ const (
 )
 
 func onOpen(asol *Asol) {
-	fmt.Println("The client is opened")
+	log.Println("The client is opened")
+
+	date := time.Now().Format("01-02-2006")
+
+	if date == client.date {
+		return
+	}
+
+	log.Println("Checking for updates...")
+
+	file, _ := ini.Load("config.ini")
+	file.Section("senna").NewKey("date", date)
+	err := file.SaveTo("config.ini")
+
+	log.Println(err)
+
+	updatePreferences()
 }
 
 func onReady(asol *Asol) {
-	fmt.Println("The client is ready")
+	log.Println("The client is ready")
 
-	var pages []model.Page
+	var pages []Page
 
 	request, _ := asol.Get("/lol-perks/v1/pages")
 	response, _ := asol.RiotRequest(request)
@@ -145,12 +90,12 @@ func onReady(asol *Asol) {
 }
 
 func onLogin(asol *Asol) {
-	fmt.Println("The client is logged in")
+	log.Println("The client is logged in")
 
 	request, _ := asol.Get("/lol-login/v1/session")
 	response, _ := asol.RiotRequest(request)
 
-	var login model.Login
+	var login Login
 	json.Unmarshal(response, &login)
 
 	summonerId := strconv.FormatFloat(login.SummonerId, 'f', -1, 64)
@@ -163,33 +108,33 @@ func onLogin(asol *Asol) {
 }
 
 func onLogout(asol *Asol) {
-	fmt.Println("The client is logged out")
+	log.Println("The client is logged out")
 }
 
 func onClientClose(asol *Asol) {
-	fmt.Println("The client is closed")
+	log.Println("The client is closed")
 }
 
 func onWebsocketClose(asol *Asol) {
-	fmt.Println("The client's websocket closed")
+	log.Println("The client's websocket closed")
 }
 
 func onReconnect(asol *Asol) {
-	fmt.Println("The client is reconnected")
+	log.Println("The client is reconnected")
 }
 
 func onWebsocketError(error error) {
-	fmt.Println(error)
+	log.Println(error)
 }
 
 func onMatchFound(asol *Asol, message []byte) {
-	var match model.MatchFound
+	var match MatchFound
 	json.Unmarshal(message, &match)
 
 	if match.Data.PlayerResponse == "None" && match.Data.Timer == 1.0 {
 		time.Sleep(3000 * time.Millisecond)
 
-		fmt.Println("Accepting match...")
+		log.Println("Accepting match...")
 
 		request, _ := asol.Post("/lol-matchmaking/v1/ready-check/accept", nil)
 		asol.RiotRequest(request)
@@ -197,20 +142,21 @@ func onMatchFound(asol *Asol, message []byte) {
 }
 
 func onPhase(asol *Asol, message []byte) {
-	var phase model.Phase
+	var phase Phase
 	json.Unmarshal(message, &phase)
 
 	if phase.Data != "ChampSelect" {
 		client.mode = ""
 
-		if phase.Data != "GameStart" && phase.Data != "InProgress" {
+		if phase.Data != "GameStart" &&
+			phase.Data != "InProgress" {
 			client.championId = ""
 		}
 	}
 }
 
 func onSession(asol *Asol, message []byte) {
-	var championSelection model.ChampionSelection
+	var championSelection ChampionSelection
 	json.Unmarshal(message, &championSelection)
 
 	phase := strings.ToLower(championSelection.Data.Timer.Phase)
@@ -223,7 +169,7 @@ func onSession(asol *Asol, message []byte) {
 		request, _ := asol.Get("/lol-gameflow/v1/session")
 		data, _ := asol.RiotRequest(request)
 
-		var gameflow model.Gameflow
+		var gameflow Gameflow
 		json.Unmarshal(data, &gameflow)
 
 		client.mode = strings.ToLower(gameflow.Map.GameMode)
@@ -254,6 +200,74 @@ func onSession(asol *Asol, message []byte) {
 				client.RiotRequest(request)
 			}
 
+			// Summoner Spells
+			preferences := getPreferences()
+
+			for id, champion := range preferences {
+				if client.championId == id {
+					client.championName = champion.Name
+
+					var spell []string
+
+					switch client.mode {
+					case "aram":
+						if client.gameType == "aram" {
+							spell = append(
+								spell,
+								strings.ToLower(champion.ARAM.X),
+								strings.ToLower(champion.ARAM.Y),
+							)
+						} else {
+							spell = append(
+								spell,
+								strings.ToLower(champion.Classic.X),
+								strings.ToLower(champion.Classic.Y),
+							)
+						}
+					case "oneforall":
+						spell = append(
+							spell,
+							strings.ToLower(champion.OneForAll.X),
+							strings.ToLower(champion.OneForAll.Y),
+						)
+					case "urf":
+						spell = append(
+							spell,
+							strings.ToLower(champion.URF.X),
+							strings.ToLower(champion.URF.Y),
+						)
+					default:
+						spell = append(
+							spell,
+							strings.ToLower(champion.Classic.X),
+							strings.ToLower(champion.Classic.Y),
+						)
+					}
+
+					var x, y float64
+
+					if client.reverse {
+						x = Spells[spell[1]]
+						y = Spells[spell[0]]
+					} else {
+						x = Spells[spell[0]]
+						y = Spells[spell[1]]
+					}
+
+					var payload = map[string]interface{}{
+						"spell1Id": x,
+						"spell2Id": y,
+					}
+
+					request, _ := client.Patch(
+						"/lol-champ-select/v1/session/my-selection",
+						payload,
+					)
+
+					client.RiotRequest(request)
+				}
+			}
+
 			var url string
 
 			// Runes
@@ -275,7 +289,7 @@ func onSession(asol *Asol, message []byte) {
 			request, _ := client.Get(url)
 			response, _ := client.WebRequest(request)
 
-			var runes model.Runes
+			var runes Runes
 			json.Unmarshal(response, &runes)
 
 			payload := map[string]interface{}{
@@ -298,11 +312,16 @@ func onSession(asol *Asol, message []byte) {
 			_, err := asol.RiotRequest(request)
 
 			if err != nil {
-				fmt.Println(err)
+				log.Println(err)
 			}
 
+			log.Println(
+				"Setting rune page and spells for",
+				client.championName,
+			)
+
 			// Pages
-			var pages []model.Page
+			var pages []Page
 
 			request, _ = asol.Get("/lol-perks/v1/pages")
 			response, _ = asol.RiotRequest(request)
@@ -343,7 +362,7 @@ func onSession(asol *Asol, message []byte) {
 		var skills []string
 		json.Unmarshal(response, &skills)
 
-		fmt.Println(
+		log.Println(
 			strings.Trim(fmt.Sprint(skills), "[]"),
 		)
 
