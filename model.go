@@ -5,7 +5,7 @@ import (
 )
 
 var (
-	Spells = map[string]float64{
+	spells = map[string]float64{
 		"cleanse":     1,
 		"exhaust":     3,
 		"flash":       4,
