@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/braycarlson/asol"
-	"github.com/go-ini/ini"
+	"github.com/braycarlson/senna/model"
 )
 
 const (
@@ -18,6 +18,30 @@ const (
 )
 
 type (
+	// API
+	Runes = model.Runes
+
+	// Data Dragon
+	Realms = model.Realms
+
+	// LCU
+	ChampionSelection = model.ChampionSelection
+	Gameflow          = model.Gameflow
+	Login             = model.Login
+	MatchFound        = model.MatchFound
+	Page              = model.Page
+	Phase             = model.Phase
+
+	// Preferences
+	ARAM         = model.ARAM
+	Champion     = model.Champion
+	ChampionData = model.ChampionData
+	Classic      = model.Classic
+	OneForAll    = model.OneForAll
+	Preference   = model.Preference
+	Preferences  = model.Preferences
+	URF          = model.URF
+
 	Client struct {
 		*asol.Asol
 		*Configuration
@@ -35,22 +59,6 @@ var (
 
 func onOpen() {
 	log.Println("The client is opened")
-
-	date := time.Now().Format("01-02-2006")
-
-	if date == client.date {
-		return
-	}
-
-	log.Println("Checking for updates...")
-
-	file, _ := ini.Load("config.ini")
-	file.Section("senna").NewKey("date", date)
-	err := file.SaveTo("config.ini")
-
-	log.Println(err)
-
-	updatePreferences()
 }
 
 func onReady() {
@@ -234,7 +242,7 @@ func page() {
 }
 
 func summonerspells() {
-	preferences := getPreferences()
+	preferences := readPreferences()
 
 	for id, champion := range preferences {
 		if client.championId == id {
@@ -280,11 +288,11 @@ func summonerspells() {
 			var x, y float64
 
 			if client.reverse {
-				x = spells[spell[1]]
-				y = spells[spell[0]]
+				x = model.Spells[spell[1]]
+				y = model.Spells[spell[0]]
 			} else {
-				x = spells[spell[0]]
-				y = spells[spell[1]]
+				x = model.Spells[spell[0]]
+				y = model.Spells[spell[1]]
 			}
 
 			var payload = map[string]interface{}{
@@ -426,6 +434,12 @@ func itemset() {
 }
 
 func main() {
+	err := checkForUpdates()
+
+	if err != nil {
+		log.Println(err)
+	}
+
 	client.OnOpen(onOpen)
 	client.OnReady(onReady)
 	client.OnLogin(onLogin)

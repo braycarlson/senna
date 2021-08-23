@@ -7,7 +7,34 @@ import (
 	"log"
 	"os"
 	"strings"
+	"time"
+
+	"github.com/go-ini/ini"
 )
+
+func NewDefaultPreference(champion ChampionData) Preference {
+	return Preference{
+		Name: champion.Name,
+		OPGG: strings.ToLower(champion.Id),
+
+		ARAM: ARAM{
+			X: "Flash",
+			Y: "Snowball",
+		},
+		Classic: Classic{
+			X: "Flash",
+			Y: "Ghost",
+		},
+		OneForAll: OneForAll{
+			X: "Flash",
+			Y: "Teleport",
+		},
+		URF: URF{
+			X: "Flash",
+			Y: "Ghost",
+		},
+	}
+}
 
 func realms() (Realms, error) {
 	url := fmt.Sprintf("%s/realms/na.json", ddragon)
@@ -43,28 +70,7 @@ func createPreferences() {
 	champion := make(map[string]Preference)
 
 	for _, data := range champions.Data {
-		preference := Preference{
-			Name: data.Name,
-			OPGG: strings.ToLower(data.Id),
-
-			ARAM: ARAM{
-				X: "Flash",
-				Y: "Snowball",
-			},
-			Classic: Classic{
-				X: "Flash",
-				Y: "Ghost",
-			},
-			OneForAll: OneForAll{
-				X: "Flash",
-				Y: "Teleport",
-			},
-			URF: URF{
-				X: "Flash",
-				Y: "Ghost",
-			},
-		}
-
+		preference := NewDefaultPreference(data)
 		champion[data.Key] = preference
 	}
 
@@ -82,7 +88,7 @@ func createPreferences() {
 	_ = ioutil.WriteFile("preferences.json", json, 0644)
 }
 
-func getPreferences() map[string]Preference {
+func readPreferences() map[string]Preference {
 	file, err := os.OpenFile(
 		"preferences.json",
 		os.O_RDONLY,
@@ -133,9 +139,9 @@ func difference(x, y []string) []string {
 	return difference
 }
 
-func isUpToDate() ([]string, error) {
+func isDifference() ([]string, error) {
 	champions, _ := champions()
-	preferences := getPreferences()
+	preferences := readPreferences()
 
 	var cid, pid []string
 
@@ -147,63 +153,64 @@ func isUpToDate() ([]string, error) {
 		pid = append(pid, key)
 	}
 
-	return difference(cid, pid), nil
+	id := difference(cid, pid)
+	return id, nil
 }
 
 func updatePreferences() {
-	id, _ := isUpToDate()
+	id, _ := isDifference()
 
 	if len(id) == 0 {
 		return
 	}
 
 	champions, _ := champions()
-	missing := make(map[string]Preference)
 
-	for _, champion := range champions.Data {
+	champion := make(map[string]Preference)
+
+	for _, data := range champions.Data {
 		for _, cid := range id {
-			if cid == champion.Key {
-				preference := Preference{
-					Name: champion.Name,
-					OPGG: strings.ToLower(champion.Id),
-
-					ARAM: ARAM{
-						X: "Flash",
-						Y: "Snowball",
-					},
-					Classic: Classic{
-						X: "Flash",
-						Y: "Ghost",
-					},
-					OneForAll: OneForAll{
-						X: "Flash",
-						Y: "Teleport",
-					},
-					URF: URF{
-						X: "Flash",
-						Y: "Ghost",
-					},
-				}
-
-				missing[champion.Key] = preference
+			if cid == data.Key {
+				preference := NewDefaultPreference(data)
+				champion[data.Key] = preference
 			}
 		}
 	}
 
 	preferences := &Preferences{
-		Champion: missing,
+		Champion: champion,
 	}
 
-	p := getPreferences()
+	file := readPreferences()
 
 	for k, v := range preferences.Champion {
-		p[k] = v
+		file[k] = v
 	}
 
 	if err := os.Truncate("preferences.json", 0); err != nil {
 		log.Printf("Failed to truncate: %v", err)
 	}
 
-	json, _ := json.MarshalIndent(p, "", "\t")
+	json, _ := json.MarshalIndent(file, "", "\t")
 	_ = ioutil.WriteFile("preferences.json", json, 0644)
+}
+
+func checkForUpdates() error {
+	date := time.Now().Format("01-02-2006")
+
+	if date == client.date {
+		return nil
+	}
+
+	file, err := ini.Load("config.ini")
+	file.Section("senna").NewKey("date", date)
+	err = file.SaveTo("config.ini")
+
+	if err != nil {
+		return err
+	}
+
+	updatePreferences()
+
+	return nil
 }
