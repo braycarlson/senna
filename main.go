@@ -3,7 +3,9 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
+	"os"
 	"reflect"
 	"strconv"
 	"strings"
@@ -155,11 +157,10 @@ func onPhase(message []byte) {
 
 	if phase.Data != "ChampSelect" {
 		client.mode = ""
+	}
 
-		if phase.Data != "GameStart" &&
-			phase.Data != "InProgress" {
-			client.championId = ""
-		}
+	if phase.Data == "None" {
+		client.resetSession()
 	}
 }
 
@@ -433,7 +434,47 @@ func itemset() {
 	client.RiotRequest(request)
 }
 
+func logger() func() {
+	err := os.MkdirAll("log", os.ModePerm)
+
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	file, err := os.OpenFile(
+		"log/senna.txt",
+		os.O_APPEND|os.O_CREATE|os.O_WRONLY,
+		0644,
+	)
+
+	stdout := os.Stdout
+	multiwriter := io.MultiWriter(stdout, file)
+	read, write, _ := os.Pipe()
+
+	os.Stdout = write
+	os.Stderr = write
+
+	log.SetOutput(multiwriter)
+	exit := make(chan bool)
+
+	go func() {
+		_, _ = io.Copy(multiwriter, read)
+		exit <- true
+	}()
+
+	return func() {
+		_ = write.Close()
+
+		<-exit
+
+		_ = file.Close()
+	}
+}
+
 func main() {
+	multiwriter := logger()
+	defer multiwriter()
+
 	err := checkForUpdates()
 
 	if err != nil {

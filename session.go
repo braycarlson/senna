@@ -15,3 +15,9 @@ type (
 func NewSession() *Session {
 	return &Session{}
 }
+
+func (session *Session) resetSession() {
+	session.championId = ""
+	session.championName = ""
+	session.mode = ""
+}
