@@ -184,40 +184,38 @@ func onSession(message []byte) {
 		client.mode = strings.ToLower(gameflow.Map.GameMode)
 	}
 
-	if phase == "ban_pick" {
+	if phase == "ban_pick" || phase == "finalization" {
 		for _, player := range championSelection.Data.MyTeam {
 			summonerId := strconv.FormatFloat(player.SummonerId, 'f', -1, 64)
 
-			if client.summonerId != summonerId {
-				return
+			if client.summonerId == summonerId {
+				championId := strconv.FormatFloat(player.ChampionId, 'f', -1, 64)
+
+				if client.championId == championId || championId == "0" {
+					return
+				}
+
+				client.championId = championId
+
+				// Delete the custom page
+				if !reflect.ValueOf(client.pageId).IsZero() {
+					request, _ := client.Delete(
+						fmt.Sprintf("/lol-perks/v1/pages/%s", client.pageId),
+					)
+
+					client.RiotRequest(request)
+				}
+
+				if client.autoSpell {
+					summonerspells()
+				}
+
+				if client.autoRune {
+					runes()
+				}
+
+				page()
 			}
-
-			championId := strconv.FormatFloat(player.ChampionId, 'f', -1, 64)
-
-			if client.championId == championId || championId == "0" {
-				return
-			}
-
-			client.championId = championId
-
-			// Delete the custom page
-			if !reflect.ValueOf(client.pageId).IsZero() {
-				request, _ := client.Delete(
-					fmt.Sprintf("/lol-perks/v1/pages/%s", client.pageId),
-				)
-
-				client.RiotRequest(request)
-			}
-
-			if client.autoSpell {
-				summonerspells()
-			}
-
-			if client.autoRune {
-				runes()
-			}
-
-			page()
 		}
 	}
 
