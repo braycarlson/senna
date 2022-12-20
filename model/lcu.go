@@ -314,7 +314,7 @@ type (
 		URI: 	/lol-perks/v1/inventory
 	*/
 	OwnedPages struct {
-		Count float64 `json:"OwnedPageCount"`
+		Count int `json:"OwnedPageCount"`
 	}
 
 	/*
@@ -343,6 +343,16 @@ type (
 	*/
 	Phase struct {
 		Data      string
+		EventType string
+		URI       string
+	}
+
+	/*
+		Method: UPDATE
+		URI: 	/process-control/v1/process
+	*/
+	ProcessControl struct {
+		Data      map[string]string
 		EventType string
 		URI       string
 	}

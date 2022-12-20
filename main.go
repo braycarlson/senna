@@ -1,510 +1,555 @@
 package main
 
 import (
+	"archive/zip"
+	"bytes"
 	"encoding/json"
 	"fmt"
-	"io"
+	"fyne.io/fyne/v2/dialog"
 	"log"
-	"os"
-	"reflect"
-	"strconv"
 	"strings"
 	"time"
 
+	"github.com/VictoriaMetrics/fastcache"
 	"github.com/braycarlson/asol"
-	"github.com/braycarlson/senna/model"
-)
-
-const (
-	ddragon = "https://ddragon.leagueoflegends.com"
+	"github.com/braycarlson/asol/request"
+	"github.com/braycarlson/senna/asset"
+	"github.com/braycarlson/senna/collection"
+	"github.com/braycarlson/senna/filesystem"
+	"github.com/braycarlson/senna/preferences"
+	"github.com/braycarlson/senna/settings"
+	"github.com/braycarlson/senna/ui"
+	"github.com/minio/selfupdate"
+	"github.com/ncruces/zenity"
 )
 
 type (
-	// API
-	Runes = model.Runes
-
-	// Data Dragon
-	Realms = model.Realms
-
-	// LCU
-	ChampionSelection = model.ChampionSelection
-	Gameflow          = model.Gameflow
-	Login             = model.Login
-	MatchFound        = model.MatchFound
-	Page              = model.Page
-	Phase             = model.Phase
-
-	// Preferences
-	ARAM         = model.ARAM
-	Champion     = model.Champion
-	ChampionData = model.ChampionData
-	Classic      = model.Classic
-	OneForAll    = model.OneForAll
-	Preference   = model.Preference
-	Preferences  = model.Preferences
-	URF          = model.URF
-
-	Client struct {
+	Senna struct {
 		*asol.Asol
-		*Configuration
-		*Session
+
+		asset       *asset.Asset
+		cache       *fastcache.Cache
+		client      *request.HTTPClient
+		filesystem  *filesystem.Filesystem
+		preferences *preferences.Preferences
+		settings    *settings.Settings
+		ui          *ui.UI
 	}
 )
 
-var (
-	client = &Client{
-		asol.NewAsol(),
-		NewConfiguration(),
-		NewSession(),
-	}
-)
+func NewSenna() *Senna {
+	var asol *asol.Asol = asol.NewAsol()
 
-func onOpen() {
-	log.Println("The client is opened")
+	return &Senna{
+		asol,
+
+		asset.NewAsset(),
+		fastcache.New(4194304),
+		asol.Client(),
+		filesystem.NewFilesystem(),
+		preferences.NewPreferences(),
+		settings.NewSettings(),
+		ui.NewUI(),
+	}
 }
 
-func onReady() {
-	log.Println("The client is ready")
+func (senna *Senna) Cache() *fastcache.Cache {
+	return senna.cache
+}
 
-	var pages []Page
+func (senna *Senna) Preferences() *preferences.Preferences {
+	return senna.preferences
+}
 
-	request, _ := client.Get("/lol-perks/v1/pages")
-	response, _ := client.RiotRequest(request)
-	json.Unmarshal(response, &pages)
+func (senna *Senna) Settings() *settings.Settings {
+	return senna.settings
+}
 
-	for _, page := range pages {
-		if client.pageName == page.Name {
-			pageId := strconv.FormatFloat(page.Id, 'f', -1, 64)
-			client.pageId = pageId
-		}
-	}
+func (senna *Senna) update() error {
+	var builder strings.Builder
+	builder.WriteString(senna.settings.API)
+	builder.WriteString("/senna/download")
+	url := builder.String()
 
-	preset := 5
-	length := len(pages)
+	senna.client.SetWeb()
+	request, err := senna.client.Get(url)
+	response, err := senna.client.Request(request)
 
-	if length > preset {
-		for index, page := range pages {
-			pageId := strconv.FormatFloat(page.Id, 'f', -1, 64)
+	buffer := bytes.NewReader(response)
+	length := buffer.Len()
 
-			if index < (length - preset) {
-				request, _ := client.Delete(
-					fmt.Sprintf("/lol-perks/v1/pages/%s", pageId),
-				)
+	reader, err := zip.NewReader(
+		buffer,
+		int64(length),
+	)
 
-				client.RiotRequest(request)
+	for _, file := range reader.File {
+		executable, _ := file.Open()
+
+		err = selfupdate.Apply(
+			executable,
+			selfupdate.Options{},
+		)
+
+		if err != nil {
+			if rerr := selfupdate.RollbackError(err); rerr != nil {
+				fmt.Println("Failed to rollback from bad update: %v", rerr)
 			}
 		}
-	}
-}
 
-func onLogin() {
-	log.Println("The client is logged in")
-
-	request, _ := client.Get("/lol-login/v1/session")
-	response, _ := client.RiotRequest(request)
-
-	var login Login
-	json.Unmarshal(response, &login)
-
-	summonerId := strconv.FormatFloat(login.SummonerId, 'f', -1, 64)
-	accountId := strconv.FormatFloat(login.AccountId, 'f', -1, 64)
-	username := login.Username
-
-	client.summonerId = summonerId
-	client.accountId = accountId
-	client.username = username
-}
-
-func onLogout() {
-	log.Println("The client is logged out")
-}
-
-func onClientClose() {
-	log.Println("The client is closed")
-}
-
-func onWebsocketClose() {
-	log.Println("The client's websocket closed")
-}
-
-func onReconnect() {
-	log.Println("The client is reconnected")
-}
-
-func onWebsocketError(error error) {
-	log.Println(error)
-}
-
-func onMatchFound(message []byte) {
-	if client.autoAccept {
-		var match MatchFound
-		json.Unmarshal(message, &match)
-
-		if match.Data.PlayerResponse == "None" && match.Data.Timer == 1.0 {
-			time.Sleep(3000 * time.Millisecond)
-
-			log.Println("Accepting match...")
-
-			request, _ := client.Post("/lol-matchmaking/v1/ready-check/accept", nil)
-			client.RiotRequest(request)
-		}
-	}
-}
-
-func onPhase(message []byte) {
-	var phase Phase
-	json.Unmarshal(message, &phase)
-
-	if phase.Data != "ChampSelect" {
-		client.mode = ""
+		executable.Close()
+		return err
 	}
 
-	if phase.Data == "None" {
-		client.resetSession()
-	}
+	return nil
 }
 
-func onSession(message []byte) {
-	var championSelection ChampionSelection
-	json.Unmarshal(message, &championSelection)
-
-	phase := strings.ToLower(championSelection.Data.Timer.Phase)
-
-	if phase == "planning" {
-		return
-	}
-
-	if reflect.ValueOf(client.mode).IsZero() {
-		request, _ := client.Get("/lol-gameflow/v1/session")
-		data, _ := client.RiotRequest(request)
-
-		var gameflow Gameflow
-		json.Unmarshal(data, &gameflow)
-
-		client.mode = strings.ToLower(gameflow.Map.GameMode)
-	}
-
-	if phase == "ban_pick" || phase == "finalization" {
-		for _, player := range championSelection.Data.MyTeam {
-			summonerId := strconv.FormatFloat(player.SummonerId, 'f', -1, 64)
-
-			if client.summonerId == summonerId {
-				championId := strconv.FormatFloat(player.ChampionId, 'f', -1, 64)
-
-				if client.championId == championId || championId == "0" {
-					return
-				}
-
-				client.championId = championId
-
-				// Delete the custom page
-				if !reflect.ValueOf(client.pageId).IsZero() {
-					request, _ := client.Delete(
-						fmt.Sprintf("/lol-perks/v1/pages/%s", client.pageId),
-					)
-
-					client.RiotRequest(request)
-				}
-
-				if client.autoSpell {
-					summonerspells()
-				}
-
-				if client.autoRune {
-					runes()
-				}
-
-				page()
-			}
-		}
-	}
-
-	if phase == "game_starting" {
-		skillorder()
-		itemset()
-	}
+func (senna *Senna) logger(message string) {
+	senna.ui.Event.History.Append(message)
+	log.Println(message)
 }
 
-func page() {
-	var pages []Page
+func (senna *Senna) isUpdate() bool {
+	var builder strings.Builder
+	builder.WriteString(senna.settings.API)
+	builder.WriteString("/senna/version")
+	url := builder.String()
 
-	request, _ := client.Get("/lol-perks/v1/pages")
-	response, _ := client.RiotRequest(request)
-	json.Unmarshal(response, &pages)
-
-	for _, page := range pages {
-		if client.pageName == page.Name {
-			pageId := strconv.FormatFloat(page.Id, 'f', -1, 64)
-			client.pageId = pageId
-		}
-	}
-}
-
-func summonerspells() {
-	preferences := readPreferences()
-
-	for id, champion := range preferences {
-		if client.championId == id {
-			client.championName = champion.Name
-
-			var spell []string
-
-			switch client.mode {
-			case "aram":
-				if client.gameType == "aram" {
-					spell = append(
-						spell,
-						strings.ToLower(champion.ARAM.X),
-						strings.ToLower(champion.ARAM.Y),
-					)
-				} else {
-					spell = append(
-						spell,
-						strings.ToLower(champion.Classic.X),
-						strings.ToLower(champion.Classic.Y),
-					)
-				}
-			case "oneforall":
-				spell = append(
-					spell,
-					strings.ToLower(champion.OneForAll.X),
-					strings.ToLower(champion.OneForAll.Y),
-				)
-			case "urf":
-				spell = append(
-					spell,
-					strings.ToLower(champion.URF.X),
-					strings.ToLower(champion.URF.Y),
-				)
-			default:
-				spell = append(
-					spell,
-					strings.ToLower(champion.Classic.X),
-					strings.ToLower(champion.Classic.Y),
-				)
-			}
-
-			var x, y float64
-
-			if client.reverse {
-				x = model.Spells[spell[1]]
-				y = model.Spells[spell[0]]
-			} else {
-				x = model.Spells[spell[0]]
-				y = model.Spells[spell[1]]
-			}
-
-			var payload = map[string]interface{}{
-				"spell1Id": x,
-				"spell2Id": y,
-			}
-
-			request, _ := client.Patch(
-				"/lol-champ-select/v1/session/my-selection",
-				payload,
-			)
-
-			client.RiotRequest(request)
-		}
-	}
-}
-
-func runes() {
-	var url string
-
-	switch client.mode {
-	case "aram":
-		if client.gameType == "aram" {
-			url = fmt.Sprintf("%s/aram/ha/runes/%s", client.api, client.championId)
-		} else {
-			url = fmt.Sprintf("%s/aram/sr/runes/%s", client.api, client.championId)
-		}
-	case "oneforall":
-		url = fmt.Sprintf("%s/ranked/runes/%s", client.api, client.championId)
-	case "urf":
-		url = fmt.Sprintf("%s/ranked/runes/%s", client.api, client.championId)
-	default:
-		url = fmt.Sprintf("%s/ranked/runes/%s", client.api, client.championId)
-	}
-
-	request, _ := client.Get(url)
-	response, _ := client.WebRequest(request)
-
-	var runes Runes
-	json.Unmarshal(response, &runes)
-
-	payload := map[string]interface{}{
-		"autoModifiedSelections": [1]int{0},
-		"current":                true,
-		"id":                     0,
-		"isActive":               true,
-		"isDeletable":            true,
-		"isEditable":             true,
-		"isValid":                true,
-		"lastModified":           0,
-		"name":                   client.pageName,
-		"order":                  0,
-		"primaryStyleId":         runes.Primary,
-		"selectedPerkIds":        runes.Runes,
-		"subStyleId":             runes.Secondary,
-	}
-
-	request, _ = client.Post("/lol-perks/v1/pages", payload)
-	_, err := client.RiotRequest(request)
+	senna.client.SetWeb()
+	request, _ := senna.client.Get(url)
+	response, err := senna.client.Request(request)
 
 	if err != nil {
 		log.Println(err)
+		return false
 	}
 
-	log.Println(
-		"Setting rune page and summoner spells for",
-		client.championName,
-	)
-}
+	version := make(map[string]string)
+	json.Unmarshal(response, &version)
 
-func skillorder() {
-	var url string
-
-	switch client.mode {
-	case "aram":
-		if client.gameType == "aram" {
-			url = fmt.Sprintf("%s/aram/ha/skills/%s", client.api, client.championId)
-		} else {
-			url = fmt.Sprintf("%s/aram/sr/skills/%s", client.api, client.championId)
-		}
-	case "oneforall":
-		url = fmt.Sprintf("%s/ranked/skills/%s", client.api, client.championId)
-	case "urf":
-		url = fmt.Sprintf("%s/ranked/skills/%s", client.api, client.championId)
-	default:
-		url = fmt.Sprintf("%s/ranked/skills/%s", client.api, client.championId)
+	if senna.settings.Version == version["version"] {
+		return false
 	}
 
-	request, _ := client.Get(url)
-	response, _ := client.WebRequest(request)
-
-	var skills []string
-	json.Unmarshal(response, &skills)
-
-	log.Println(
-		fmt.Sprintf(
-			"Skill order for %v: %v",
-			client.championName,
-			strings.Trim(fmt.Sprint(skills), "[]"),
-		),
-	)
-}
-
-func itemset() {
-	var url string
-
-	switch client.mode {
-	case "aram":
-		if client.gameType == "aram" {
-			url = fmt.Sprintf("%s/aram/ha/items/%s", client.api, client.championId)
-		} else {
-			url = fmt.Sprintf("%s/aram/sr/items/%s", client.api, client.championId)
-		}
-	case "oneforall":
-		url = fmt.Sprintf("%s/event/sr/items/%s", client.api, client.championId)
-	case "urf":
-		url = fmt.Sprintf("%s/urf/sr/items/%s", client.api, client.championId)
-	default:
-		url = fmt.Sprintf("%s/ranked/sr/items/%s", client.api, client.championId)
-	}
-
-	request, _ := client.Get(url)
-	response, _ := client.WebRequest(request)
-
-	var itemset interface{}
-	json.Unmarshal(response, &itemset)
-
-	var payload = map[string]interface{}{
-		"accountId": client.accountId,
-	}
-
-	for k, v := range itemset.(map[string]interface{}) {
-		payload[k] = v
-	}
-
-	url = fmt.Sprintf("/lol-item-sets/v1/item-sets/%s/sets", client.accountId)
-	request, _ = client.Put(url, payload)
-	client.RiotRequest(request)
-}
-
-func logger() func() {
-	err := os.MkdirAll("log", os.ModePerm)
-
-	if err != nil {
-		fmt.Println(err)
-	}
-
-	file, err := os.OpenFile(
-		"log/senna.txt",
-		os.O_APPEND|os.O_CREATE|os.O_WRONLY,
-		0644,
+	senna.cache.Set(
+		[]byte("version"),
+		[]byte(version["version"]),
 	)
 
-	stdout := os.Stdout
-	multiwriter := io.MultiWriter(stdout, file)
-	read, write, _ := os.Pipe()
+	return true
+}
 
-	os.Stdout = write
-	os.Stderr = write
+func (senna *Senna) isRiotUpdate() bool {
+	previous := senna.settings.Date
+	current := time.Now().Format("01-02-2006")
 
-	log.SetOutput(multiwriter)
-	exit := make(chan bool)
-
-	go func() {
-		_, _ = io.Copy(multiwriter, read)
-		exit <- true
-	}()
-
-	return func() {
-		_ = write.Close()
-
-		<-exit
-
-		_ = file.Close()
+	if current == previous {
+		return false
 	}
+
+	return true
 }
 
 func main() {
 	multiwriter := logger()
 	defer multiwriter()
 
-	err := checkForUpdates()
+	senna := NewSenna()
 
-	if err != nil {
-		log.Println(err)
+	senna.logger("senna is checking for an update")
+	update := senna.isUpdate()
+
+	if update {
+		senna.logger("senna found an update")
+
+		confirm := dialog.NewConfirm(
+			"Update",
+			"Do you want to download the latest version of senna?",
+			func(ok bool) {
+				if ok {
+					senna.logger("senna is updating")
+
+					version := string(
+						senna.cache.Get(
+							[]byte{},
+							[]byte("version"),
+						),
+					)
+
+					senna.settings.Replace("version", version)
+					err := senna.update()
+
+					if err == nil {
+						senna.ui.Restart()
+					}
+				}
+
+				senna.logger("senna is ignoring the update")
+			},
+			senna.ui.Window,
+		)
+
+		confirm.Show()
 	}
 
-	client.OnOpen(onOpen)
-	client.OnReady(onReady)
-	client.OnLogin(onLogin)
-	client.OnLogout(onLogout)
-	client.OnClientClose(onClientClose)
-	client.OnWebsocketClose(onWebsocketClose)
-	client.OnReconnect(onReconnect)
-	client.OnWebsocketError(onWebsocketError)
+	senna.asset.SetCache(senna.cache)
+	senna.asset.SetClient(senna.client)
+	senna.asset.SetSettings(senna.settings)
 
-	client.OnMessage(
+	if !senna.filesystem.Exist(senna.filesystem.Archive) {
+		senna.asset.Download()
+	}
+
+	if !senna.filesystem.Exist(senna.filesystem.Preferences) {
+		senna.preferences.Create()
+	}
+
+	if senna.isRiotUpdate() {
+		err := senna.asset.Download()
+
+		if err != nil {
+			zenity.Error(
+				"senna was unable to download the asset file",
+				zenity.Title("Error"),
+			)
+
+			log.Println("senna was unable to download the asset file")
+
+			if !senna.asset.IsDownloaded() {
+				return
+			}
+		}
+
+		current := time.Now().Format("01-02-2006")
+		senna.settings.Replace("date", current)
+
+		senna.preferences.Update()
+	}
+
+	senna.asset.Load()
+
+	senna.ui.Window.SetOnClosed(func() {
+		if senna.ui.Home.State.Text == "Stop" {
+			go senna.Stop()
+		}
+	})
+
+	senna.OnSearch(senna.onSearch)
+	senna.OnOpen(senna.onOpen)
+	senna.OnReady(senna.onReady)
+	senna.OnLogin(senna.onLogin)
+	senna.OnProcessError(senna.onProcessError)
+	senna.OnSearchError(senna.onSearchError)
+	senna.OnWebsocketClose(senna.onWebsocketClose)
+	senna.OnWebsocketError(senna.onWebsocketError)
+
+	senna.OnMessage(
 		"/lol-matchmaking/v1/ready-check",
 		"Update",
-		onMatchFound,
+		senna.onMatchFound,
 	)
 
-	client.OnMessage(
+	senna.OnMessage(
 		"/lol-gameflow/v1/gameflow-phase",
 		"Update",
-		onPhase,
+		senna.onPhase,
 	)
 
-	client.OnMessage(
+	senna.OnMessage(
 		"/lol-champ-select/v1/session",
 		"Update",
-		onSession,
+		senna.onSession,
 	)
 
-	client.Start()
+	senna.OnMessage(
+		"/process-control/v1/process",
+		"Update",
+		senna.onProcessClose,
+	)
+
+	if senna.settings.AutoStart {
+		if senna.ui.Home.State.Text == "Start" {
+			senna.ui.Home.State.Importance = 0
+			senna.ui.Home.State.Text = "Stop"
+
+			go senna.Start()
+		}
+
+		senna.ui.Home.State.Refresh()
+	}
+
+	senna.ui.Settings.Restart.OnTapped = func() {
+		senna.ui.Restart()
+	}
+
+	senna.ui.Home.State.OnTapped = func() {
+		if senna.ui.Home.State.Text == "Start" {
+			senna.ui.Home.State.Importance = 0
+			senna.ui.Home.State.Text = "Stop"
+
+			go senna.Start()
+		} else {
+			senna.ui.Home.State.Importance = 1
+			senna.ui.Home.State.Text = "Start"
+			senna.ui.Clear()
+
+			go senna.Stop()
+		}
+
+		senna.ui.Home.State.Refresh()
+	}
+
+	senna.ui.Home.Classic.OnTapped = func() {
+		gameflow := senna.cache.Get(
+			[]byte{},
+			[]byte("gameflow"),
+		)
+
+		if len(gameflow) == 0 {
+			dialog.ShowInformation(
+				"Warning",
+				"You must be in champion selection",
+				senna.ui.Window,
+			)
+
+			return
+		}
+
+		_, ok := senna.cache.HasGet(
+			[]byte{},
+			[]byte("championId"),
+		)
+
+		if ok {
+			pageId := senna.cache.Get(
+				[]byte{},
+				[]byte("pageId"),
+			)
+
+			var status string
+			var payload []byte
+
+			var mode string = "classic"
+			var region string = "kr"
+
+			runepage := &collection.Runepage{
+				Cache:    senna.cache,
+				Client:   senna.client,
+				Settings: senna.settings,
+			}
+
+			payload = runepage.Get(
+				&collection.Local{
+					collection.Parameter{
+						Asset:  "runepage",
+						Mode:   mode,
+						Region: region,
+					},
+				},
+			)
+
+			runepage.Delete(pageId)
+			runepage.Set(payload)
+			runepage.Update()
+
+			status = runepage.Status()
+			senna.ui.Event.History.Append(status)
+
+			spell := &collection.SummonerSpell{
+				Cache:       senna.cache,
+				Client:      senna.client,
+				Preferences: senna.preferences,
+				Settings:    senna.settings,
+			}
+
+			payload = spell.Get(
+				&collection.Local{
+					collection.Parameter{
+						Asset:  "spell",
+						Mode:   mode,
+						Region: region,
+					},
+				},
+			)
+
+			spell.Set(payload)
+
+			status = spell.Status()
+			senna.ui.Event.History.Append(status)
+
+			itemset := &collection.Itemset{
+				Cache:    senna.cache,
+				Client:   senna.client,
+				Settings: senna.settings,
+			}
+
+			payload = itemset.Get(
+				&collection.Local{
+					collection.Parameter{
+						Asset:  "itemset",
+						Mode:   mode,
+						Region: region,
+					},
+				},
+			)
+
+			itemset.Set(payload)
+
+			status = itemset.Status()
+			senna.ui.Event.History.Append(status)
+
+			skillorder := &collection.SkillOrder{
+				Cache:    senna.cache,
+				Client:   senna.client,
+				Settings: senna.settings,
+			}
+
+			payload = skillorder.Get(
+				&collection.Local{
+					collection.Parameter{
+						Asset:  "skillorder",
+						Mode:   mode,
+						Region: region,
+					},
+				},
+			)
+
+			status = skillorder.Status() + skillorder.Process(payload)
+			senna.ui.Event.History.Append(status)
+		}
+	}
+
+	senna.ui.Home.ARAM.OnTapped = func() {
+		gameflow := senna.cache.Get(
+			[]byte{},
+			[]byte("gameflow"),
+		)
+
+		if len(gameflow) == 0 {
+			dialog.ShowInformation(
+				"Warning",
+				"You must be in champion selection",
+				senna.ui.Window,
+			)
+
+			return
+		}
+
+		_, ok := senna.cache.HasGet(
+			[]byte{},
+			[]byte("championId"),
+		)
+
+		if ok {
+			pageId := senna.cache.Get(
+				[]byte{},
+				[]byte("pageId"),
+			)
+
+			var status string
+			var payload []byte
+
+			var mode string = "aram"
+			var region string = "kr"
+
+			runepage := &collection.Runepage{
+				Cache:    senna.cache,
+				Client:   senna.client,
+				Settings: senna.settings,
+			}
+
+			payload = runepage.Get(
+				&collection.Local{
+					collection.Parameter{
+						Asset:  "runepage",
+						Mode:   mode,
+						Region: region,
+					},
+				},
+			)
+
+			runepage.Delete(pageId)
+			runepage.Set(payload)
+			runepage.Update()
+
+			status = runepage.Status()
+			senna.ui.Event.History.Append(status)
+
+			spell := &collection.SummonerSpell{
+				Cache:       senna.cache,
+				Client:      senna.client,
+				Preferences: senna.preferences,
+				Settings:    senna.settings,
+			}
+
+			payload = spell.Get(
+				&collection.Local{
+					collection.Parameter{
+						Asset:  "spell",
+						Mode:   mode,
+						Region: region,
+					},
+				},
+			)
+
+			spell.Set(payload)
+
+			status = spell.Status()
+			senna.ui.Event.History.Append(status)
+
+			itemset := &collection.Itemset{
+				Cache:    senna.cache,
+				Client:   senna.client,
+				Settings: senna.settings,
+			}
+
+			payload = itemset.Get(
+				&collection.Local{
+					collection.Parameter{
+						Asset:  "itemset",
+						Mode:   mode,
+						Region: region,
+					},
+				},
+			)
+
+			itemset.Set(payload)
+
+			status = itemset.Status()
+			senna.ui.Event.History.Append(status)
+
+			skillorder := &collection.SkillOrder{
+				Cache:    senna.cache,
+				Client:   senna.client,
+				Settings: senna.settings,
+			}
+
+			payload = skillorder.Get(
+				&collection.Local{
+					collection.Parameter{
+						Asset:  "skillorder",
+						Mode:   mode,
+						Region: region,
+					},
+				},
+			)
+
+			status = skillorder.Status() + skillorder.Process(payload)
+			senna.ui.Event.History.Append(status)
+		}
+	}
+
+	senna.ui.Settings.Save.OnTapped = func() {
+		widget := senna.ui.Settings.Get()
+		senna.settings.Save(widget)
+
+		senna.settings = nil
+		senna.settings = settings.NewSettings()
+	}
+
+	senna.ui.Preferences.Champion.OnChanged = senna.ui.Preferences.SetPreference
+	senna.ui.Preferences.Save.OnTapped = senna.ui.Preferences.SavePreference
+	senna.ui.Preferences.Reset.OnTapped = senna.ui.Preferences.ResetPreference
+
+	senna.ui.Window.ShowAndRun()
 }
