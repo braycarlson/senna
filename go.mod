@@ -1,17 +1,19 @@
 module github.com/braycarlson/senna
 
-go 1.18
+go 1.19
 
 require (
-	fyne.io/fyne/v2 v2.2.3
+	fyne.io/fyne/v2 v2.2.4
+	github.com/VictoriaMetrics/fastcache v1.12.0
 	github.com/braycarlson/asol v0.0.2
-	github.com/go-ini/ini v1.66.6
+	github.com/go-ini/ini v1.67.0
+	github.com/minio/selfupdate v0.5.0
+	github.com/ncruces/zenity v0.10.5
 )
 
 require (
 	fyne.io/systray v1.10.1-0.20220621085403-9a2652634e93 // indirect
 	github.com/StackExchange/wmi v1.2.1 // indirect
-	github.com/VictoriaMetrics/fastcache v1.10.0 // indirect
 	github.com/akavel/rsrc v0.10.2 // indirect
 	github.com/cespare/xxhash/v2 v2.1.2 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
@@ -31,8 +33,6 @@ require (
 	github.com/gorilla/websocket v1.4.2 // indirect
 	github.com/josephspurrier/goversioninfo v1.4.0 // indirect
 	github.com/jsummers/gobmp v0.0.0-20151104160322-e2ba15ffa76e // indirect
-	github.com/minio/selfupdate v0.5.0 // indirect
-	github.com/ncruces/zenity v0.10.4 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/randall77/makefat v0.0.0-20210315173500-7ddd0e42c844 // indirect
 	github.com/shirou/gopsutil/v3 v3.21.7 // indirect

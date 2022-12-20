@@ -23,6 +23,8 @@ type (
 )
 
 func NewUI() *UI {
+	os.Setenv("FYNE_SCALE", "1.2")
+
 	app := app.New()
 	window := app.NewWindow("senna")
 

@@ -27,4 +27,4 @@ A tool to automate League of Legends
 ## Note
 
 - senna is a personal project, and while it is functional, a personal API is required to use it
-- The purpose of this application is to demonstrate the possibilities when using [asol](https://github.com/braycarlson/asol)
+- The purpose of this application is to demonstrate how to use [asol](https://github.com/braycarlson/asol)
