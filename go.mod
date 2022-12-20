@@ -4,7 +4,7 @@ go 1.18
 
 require (
 	fyne.io/fyne/v2 v2.2.3
-	github.com/braycarlson/asol v0.0.1
+	github.com/braycarlson/asol v0.0.2
 	github.com/go-ini/ini v1.66.6
 )
 
@@ -53,4 +53,4 @@ require (
 	honnef.co/go/js/dom v0.0.0-20210725211120-f030747120f2 // indirect
 )
 
-replace github.com/braycarlson/asol v0.0.1 => ../asol
+replace github.com/braycarlson/asol v0.0.2 => ../asol
