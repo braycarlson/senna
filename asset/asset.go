@@ -33,12 +33,10 @@ type (
 )
 
 func NewAsset() *Asset {
-	var filesystem *filesystem.Filesystem = filesystem.NewFilesystem()
 	var strategy *Archive = &Archive{}
 
 	return &Asset{
-		filesystem: filesystem,
-		strategy:   strategy,
+		strategy: strategy,
 	}
 }
 
@@ -83,6 +81,10 @@ func (asset *Asset) SetCache(cache *fastcache.Cache) {
 
 func (asset *Asset) SetClient(client *request.HTTPClient) {
 	asset.client = client
+}
+
+func (asset *Asset) SetFilesystem(filesystem *filesystem.Filesystem) {
+	asset.filesystem = filesystem
 }
 
 func (asset *Asset) SetSettings(settings *settings.Settings) {

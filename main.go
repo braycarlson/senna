@@ -39,17 +39,51 @@ type (
 
 func NewSenna() *Senna {
 	var asol *asol.Asol = asol.NewAsol()
+	var client *request.HTTPClient = asol.Client()
+	var cache *fastcache.Cache = fastcache.New(4194304)
+	var filesystem *filesystem.Filesystem = filesystem.NewFilesystem()
+
+	var settings *settings.Settings = settings.NewSettings()
+	settings.SetFilesystem(filesystem)
+
+	if !filesystem.Exist(filesystem.Settings) {
+		settings.Create()
+	}
+
+	settings.Load()
+
+	var asset *asset.Asset = asset.NewAsset()
+	asset.SetCache(cache)
+	asset.SetClient(client)
+	asset.SetFilesystem(filesystem)
+	asset.SetSettings(settings)
+
+	if !filesystem.Exist(filesystem.Archive) {
+		asset.Download()
+	}
+
+	var preferences *preferences.Preferences = preferences.NewPreferences()
+	preferences.SetFilesystem(filesystem)
+
+	if !filesystem.Exist(filesystem.Preferences) {
+		preferences.Create()
+	}
+
+	var ui *ui.UI = ui.NewUI()
+	ui.SetPreferences(preferences)
+	ui.SetSettings(settings)
+
+	ui.Create()
 
 	return &Senna{
 		asol,
-
-		asset.NewAsset(),
-		fastcache.New(4194304),
-		asol.Client(),
-		filesystem.NewFilesystem(),
-		preferences.NewPreferences(),
-		settings.NewSettings(),
-		ui.NewUI(),
+		asset,
+		cache,
+		client,
+		filesystem,
+		preferences,
+		settings,
+		ui,
 	}
 }
 
@@ -190,18 +224,6 @@ func main() {
 		)
 
 		confirm.Show()
-	}
-
-	senna.asset.SetCache(senna.cache)
-	senna.asset.SetClient(senna.client)
-	senna.asset.SetSettings(senna.settings)
-
-	if !senna.filesystem.Exist(senna.filesystem.Archive) {
-		senna.asset.Download()
-	}
-
-	if !senna.filesystem.Exist(senna.filesystem.Preferences) {
-		senna.preferences.Create()
 	}
 
 	if senna.isRiotUpdate() {

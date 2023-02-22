@@ -9,6 +9,9 @@ import (
 	"os/exec"
 	"runtime"
 	"syscall"
+
+	"github.com/braycarlson/senna/preferences"
+	"github.com/braycarlson/senna/settings"
 )
 
 type (
@@ -23,6 +26,16 @@ type (
 )
 
 func NewUI() *UI {
+	var preferences *PreferencesWidget = NewPreferencesWidget()
+	var settings *SettingsWidget = NewSettingsWidget()
+
+	return &UI{
+		Preferences: preferences,
+		Settings:    settings,
+	}
+}
+
+func (ui *UI) Create() {
 	os.Setenv("FYNE_SCALE", "1.2")
 
 	app := app.New()
@@ -34,8 +47,12 @@ func NewUI() *UI {
 
 	var home *HomeWidget = NewHomeWidget()
 	var event *EventLogWidget = NewEventLogWidget()
-	var preferences *PreferencesWidget = NewPreferencesWidget()
-	var settings *SettingsWidget = NewSettingsWidget()
+
+	var preferences *PreferencesWidget = ui.Preferences
+	preferences.Create()
+
+	var settings *SettingsWidget = ui.Settings
+	settings.Create()
 
 	tabs := container.NewAppTabs(
 		container.NewTabItem(
@@ -59,15 +76,10 @@ func NewUI() *UI {
 	tabs.SetTabLocation(container.TabLocationLeading)
 	window.SetContent(tabs)
 
-	var ui UI
 	ui.App = app
 	ui.Window = window
 	ui.Home = home
 	ui.Event = event
-	ui.Preferences = preferences
-	ui.Settings = settings
-
-	return &ui
 }
 
 func (ui *UI) Clear() {
@@ -103,4 +115,12 @@ func (ui *UI) Restart() {
 	default:
 		syscall.Exec(executable, args, env)
 	}
+}
+
+func (ui *UI) SetPreferences(preferences *preferences.Preferences) {
+	ui.Preferences.SetPreferences(preferences)
+}
+
+func (ui *UI) SetSettings(settings *settings.Settings) {
+	ui.Settings.SetSettings(settings)
 }

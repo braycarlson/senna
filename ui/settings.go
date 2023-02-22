@@ -26,29 +26,32 @@ type (
 		reverse    *widget.Select
 		Save       *widget.Button
 		Restart    *widget.Button
+		settings   *settings.Settings
 	}
 )
 
 func NewSettingsWidget() *SettingsWidget {
-	var settings = settings.NewSettings()
+	return &SettingsWidget{}
+}
 
+func (settings *SettingsWidget) Create() {
 	api := widget.NewEntry()
 
-	api.SetText(settings.API)
+	api.SetText(settings.settings.API)
 
 	region := widget.NewSelect(
 		[]string{"kr"},
 		nil,
 	)
 
-	region.SetSelected(settings.Region)
+	region.SetSelected(settings.settings.Region)
 
 	mode := widget.NewSelect(
 		[]string{"aram", "classic"},
 		nil,
 	)
 
-	mode.SetSelected(settings.Mode)
+	mode.SetSelected(settings.settings.Mode)
 
 	autoAccept := widget.NewSelect(
 		[]string{"true", "false"},
@@ -56,7 +59,7 @@ func NewSettingsWidget() *SettingsWidget {
 	)
 
 	autoAccept.SetSelected(
-		strconv.FormatBool(settings.AutoAccept),
+		strconv.FormatBool(settings.settings.AutoAccept),
 	)
 
 	autoRune := widget.NewSelect(
@@ -65,7 +68,7 @@ func NewSettingsWidget() *SettingsWidget {
 	)
 
 	autoRune.SetSelected(
-		strconv.FormatBool(settings.AutoRune),
+		strconv.FormatBool(settings.settings.AutoRune),
 	)
 
 	autoSpell := widget.NewSelect(
@@ -74,7 +77,7 @@ func NewSettingsWidget() *SettingsWidget {
 	)
 
 	autoSpell.SetSelected(
-		strconv.FormatBool(settings.AutoSpell),
+		strconv.FormatBool(settings.settings.AutoSpell),
 	)
 
 	autoStart := widget.NewSelect(
@@ -83,12 +86,12 @@ func NewSettingsWidget() *SettingsWidget {
 	)
 
 	autoStart.SetSelected(
-		strconv.FormatBool(settings.AutoStart),
+		strconv.FormatBool(settings.settings.AutoStart),
 	)
 
 	pageName := widget.NewEntry()
 
-	pageName.SetText(settings.PageName)
+	pageName.SetText(settings.settings.PageName)
 
 	reverse := widget.NewSelect(
 		[]string{"true", "false"},
@@ -96,7 +99,7 @@ func NewSettingsWidget() *SettingsWidget {
 	)
 
 	reverse.SetSelected(
-		strconv.FormatBool(settings.Reverse),
+		strconv.FormatBool(settings.settings.Reverse),
 	)
 
 	save := widget.NewButton("Save", nil)
@@ -168,20 +171,18 @@ func NewSettingsWidget() *SettingsWidget {
 		),
 	)
 
-	return &SettingsWidget{
-		panel:      panel,
-		api:        api,
-		region:     region,
-		mode:       mode,
-		autoAccept: autoAccept,
-		autoRune:   autoRune,
-		autoSpell:  autoSpell,
-		autoStart:  autoStart,
-		pageName:   pageName,
-		reverse:    reverse,
-		Save:       save,
-		Restart:    restart,
-	}
+	settings.panel = panel
+	settings.api = api
+	settings.region = region
+	settings.mode = mode
+	settings.autoAccept = autoAccept
+	settings.autoRune = autoRune
+	settings.autoSpell = autoSpell
+	settings.autoStart = autoStart
+	settings.pageName = pageName
+	settings.reverse = reverse
+	settings.Save = save
+	settings.Restart = restart
 }
 
 func (settings *SettingsWidget) Get() map[string]string {
@@ -196,4 +197,8 @@ func (settings *SettingsWidget) Get() map[string]string {
 		"pageName":   settings.pageName.Text,
 		"reverse":    settings.reverse.Selected,
 	}
+}
+
+func (widget *SettingsWidget) SetSettings(settings *settings.Settings) {
+	widget.settings = settings
 }

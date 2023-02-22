@@ -21,9 +21,7 @@ type (
 )
 
 func NewPreferences() *Preferences {
-	return &Preferences{
-		filesystem: filesystem.NewFilesystem(),
-	}
+	return &Preferences{}
 }
 
 func NewDefaultPreference(name string, opgg string) model.Preference {
@@ -95,6 +93,12 @@ func (preferences *Preferences) championIdentifier() []string {
 }
 
 func (preferences *Preferences) Create() {
+	os.OpenFile(
+		preferences.filesystem.Preferences,
+		os.O_RDWR|os.O_CREATE|os.O_EXCL,
+		0666,
+	)
+
 	champions := preferences.Champion()
 	champion := make(map[string]model.Preference)
 
@@ -117,6 +121,10 @@ func (preferences *Preferences) Create() {
 
 	json, _ := json.MarshalIndent(preference, "", "\t")
 	_ = os.WriteFile(preferences.filesystem.Preferences, json, 0644)
+}
+
+func (preferences *Preferences) Path() string {
+	return preferences.filesystem.Preferences
 }
 
 func (preferences *Preferences) Preferences() map[string]model.Preference {
@@ -187,6 +195,10 @@ func (preferences *Preferences) isDifference() ([]string, error) {
 
 	id := getDifference(cid, pid)
 	return id, nil
+}
+
+func (preferences *Preferences) SetFilesystem(filesystem *filesystem.Filesystem) {
+	preferences.filesystem = filesystem
 }
 
 func (preferences *Preferences) Update() {

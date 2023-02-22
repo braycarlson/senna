@@ -13,35 +13,37 @@ import (
 	"fyne.io/fyne/v2/widget"
 	"image/color"
 
-	"github.com/braycarlson/senna/filesystem"
 	"github.com/braycarlson/senna/model"
 	"github.com/braycarlson/senna/preferences"
 )
 
 type (
 	PreferencesWidget struct {
-		panel      *fyne.Container
-		filesystem *filesystem.Filesystem
-		Champion   *widget.Select
-		Identifier map[string]string
-		Preference map[string]model.Preference
-		Spell      []string
-		ARAM_X     *widget.Select
-		ARAM_Y     *widget.Select
-		Classic_X  *widget.Select
-		Classic_Y  *widget.Select
-		OFA_X      *widget.Select
-		OFA_Y      *widget.Select
-		URF_X      *widget.Select
-		URF_Y      *widget.Select
-		Save       *widget.Button
-		Reset      *widget.Button
+		panel       *fyne.Container
+		Champion    *widget.Select
+		Identifier  map[string]string
+		Preference  map[string]model.Preference
+		Spell       []string
+		ARAM_X      *widget.Select
+		ARAM_Y      *widget.Select
+		Classic_X   *widget.Select
+		Classic_Y   *widget.Select
+		OFA_X       *widget.Select
+		OFA_Y       *widget.Select
+		URF_X       *widget.Select
+		URF_Y       *widget.Select
+		Save        *widget.Button
+		Reset       *widget.Button
+		preferences *preferences.Preferences
 	}
 )
 
 func NewPreferencesWidget() *PreferencesWidget {
-	var preferences = preferences.NewPreferences()
-	preference := preferences.Preferences()
+	return &PreferencesWidget{}
+}
+
+func (preferences *PreferencesWidget) Create() {
+	preference := preferences.preferences.Preferences()
 
 	var name []string
 	identifier := map[string]string{}
@@ -186,24 +188,21 @@ func NewPreferencesWidget() *PreferencesWidget {
 		),
 	)
 
-	return &PreferencesWidget{
-		panel:      panel,
-		filesystem: filesystem.NewFilesystem(),
-		Champion:   champion,
-		Spell:      spell,
-		Identifier: identifier,
-		Preference: preference,
-		ARAM_X:     aram_x,
-		ARAM_Y:     aram_y,
-		Classic_X:  classic_x,
-		Classic_Y:  classic_y,
-		OFA_X:      ofa_x,
-		OFA_Y:      ofa_y,
-		URF_X:      urf_x,
-		URF_Y:      urf_y,
-		Save:       save,
-		Reset:      reset,
-	}
+	preferences.panel = panel
+	preferences.Champion = champion
+	preferences.Spell = spell
+	preferences.Identifier = identifier
+	preferences.Preference = preference
+	preferences.ARAM_X = aram_x
+	preferences.ARAM_Y = aram_y
+	preferences.Classic_X = classic_x
+	preferences.Classic_Y = classic_y
+	preferences.OFA_X = ofa_x
+	preferences.OFA_Y = ofa_y
+	preferences.URF_X = urf_x
+	preferences.URF_Y = urf_y
+	preferences.Save = save
+	preferences.Reset = reset
 }
 
 func (preferences *PreferencesWidget) SavePreference() {
@@ -227,12 +226,14 @@ func (preferences *PreferencesWidget) SavePreference() {
 
 	preferences.Preference[id] = preference
 
-	if err := os.Truncate(preferences.filesystem.Preferences, 0); err != nil {
+	var path string = preferences.preferences.Path()
+
+	if err := os.Truncate(path, 0); err != nil {
 		log.Printf("Failed to truncate: %v", err)
 	}
 
 	json, _ := json.MarshalIndent(preferences.Preference, "", "\t")
-	_ = os.WriteFile(preferences.filesystem.Preferences, json, 0644)
+	_ = os.WriteFile(path, json, 0644)
 }
 
 func (preferences *PreferencesWidget) ResetPreference() {
@@ -267,4 +268,8 @@ func (preferences *PreferencesWidget) SetPreference(name string) {
 	preferences.OFA_Y.SetSelected(preference.OneForAll.Y)
 	preferences.URF_X.SetSelected(preference.URF.X)
 	preferences.URF_Y.SetSelected(preference.URF.Y)
+}
+
+func (widget *PreferencesWidget) SetPreferences(preferences *preferences.Preferences) {
+	widget.preferences = preferences
 }

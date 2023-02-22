@@ -2,15 +2,15 @@ package settings
 
 import (
 	"os"
-	"path/filepath"
 	"time"
 
+	"github.com/braycarlson/senna/filesystem"
 	"github.com/go-ini/ini"
 )
 
 type (
 	Settings struct {
-		Path       string
+		filesystem *filesystem.Filesystem
 		API        string
 		Region     string
 		Mode       string
@@ -26,75 +26,64 @@ type (
 )
 
 func NewSettings() *Settings {
-	var configuration, _ = os.UserConfigDir()
-	var home = filepath.Join(configuration, "senna")
-	var path = filepath.Join(home, "settings.ini")
+	return &Settings{}
+}
 
+func (settings *Settings) Create() error {
 	_, err := os.OpenFile(
-		path,
+		settings.filesystem.Settings,
 		os.O_RDWR|os.O_CREATE|os.O_EXCL,
 		0666,
 	)
 
-	file, _ := ini.Load(path)
+	file, err := ini.Load(settings.filesystem.Settings)
 
-	if err == nil {
-		date := time.Now().Format("01-02-2006")
+	date := time.Now().Format("01-02-2006")
 
-		file.NewSection("senna")
-		file.Section("senna").NewKey("api", "https://localhost.com:5000")
-		file.Section("senna").NewKey("region", "kr")
-		file.Section("senna").NewKey("mode", "aram")
-		file.Section("senna").NewKey("autoaccept", "true")
-		file.Section("senna").NewKey("autorune", "false")
-		file.Section("senna").NewKey("autospell", "false")
-		file.Section("senna").NewKey("autostart", "false")
-		file.Section("senna").NewKey("page", "senna")
-		file.Section("senna").NewKey("reverse", "false")
-		file.Section("senna").NewKey("version", "0.0.1")
-		file.Section("senna").NewKey("date", date)
+	file.NewSection("senna")
+	file.Section("senna").NewKey("api", "https://localhost.com:5000")
+	file.Section("senna").NewKey("region", "kr")
+	file.Section("senna").NewKey("mode", "aram")
+	file.Section("senna").NewKey("autoaccept", "true")
+	file.Section("senna").NewKey("autorune", "false")
+	file.Section("senna").NewKey("autospell", "false")
+	file.Section("senna").NewKey("autostart", "false")
+	file.Section("senna").NewKey("page", "senna")
+	file.Section("senna").NewKey("reverse", "false")
+	file.Section("senna").NewKey("version", "0.0.1")
+	file.Section("senna").NewKey("date", date)
 
-		err = file.SaveTo(path)
-	}
+	err = file.SaveTo(settings.filesystem.Settings)
+
+	return err
+}
+
+func (settings *Settings) Load() {
+	file, _ := ini.Load(settings.filesystem.Settings)
 
 	section := file.Section("senna")
-	api := section.Key("api").String()
-	region := section.Key("region").String()
-	mode := section.Key("mode").String()
-	autoAccept, _ := section.Key("autoaccept").Bool()
-	autoRune, _ := section.Key("autorune").Bool()
-	autoSpell, _ := section.Key("autospell").Bool()
-	autoStart, _ := section.Key("autostart").Bool()
-	pageName := section.Key("page").String()
-	reverse, _ := section.Key("reverse").Bool()
-	version := section.Key("version").String()
-	date := section.Key("date").String()
-
-	return &Settings{
-		Path:       path,
-		API:        api,
-		Region:     region,
-		Mode:       mode,
-		AutoAccept: autoAccept,
-		AutoRune:   autoRune,
-		AutoSpell:  autoSpell,
-		AutoStart:  autoStart,
-		PageName:   pageName,
-		Reverse:    reverse,
-		Version:    version,
-		Date:       date,
-	}
+	settings.API = section.Key("api").String()
+	settings.Region = section.Key("region").String()
+	settings.Mode = section.Key("mode").String()
+	settings.AutoAccept, _ = section.Key("autoaccept").Bool()
+	settings.AutoRune, _ = section.Key("autorune").Bool()
+	settings.AutoSpell, _ = section.Key("autospell").Bool()
+	settings.AutoStart, _ = section.Key("autostart").Bool()
+	settings.PageName = section.Key("page").String()
+	settings.Reverse, _ = section.Key("reverse").Bool()
+	settings.Version = section.Key("version").String()
+	settings.Date = section.Key("date").String()
 }
 
 func (settings *Settings) Replace(k string, v string) {
-	file, _ := ini.Load(settings.Path)
+	file, _ := ini.Load(settings.filesystem.Settings)
 
 	file.Section("senna").Key(k).SetValue(v)
-	_ = file.SaveTo(settings.Path)
+	_ = file.SaveTo(settings.filesystem.Settings)
 }
 
 func (settings *Settings) Save(widget map[string]string) {
-	file, _ := ini.Load(settings.Path)
+	file, _ := ini.Load(settings.filesystem.Settings)
 
 	file.Section("senna").Key("api").SetValue(
 		widget["api"],
@@ -132,5 +121,9 @@ func (settings *Settings) Save(widget map[string]string) {
 		widget["reverse"],
 	)
 
-	_ = file.SaveTo(settings.Path)
+	_ = file.SaveTo(settings.filesystem.Settings)
+}
+
+func (settings *Settings) SetFilesystem(filesystem *filesystem.Filesystem) {
+	settings.filesystem = filesystem
 }
