@@ -36,7 +36,7 @@ func NewUI() *UI {
 }
 
 func (ui *UI) Create() {
-	os.Setenv("FYNE_SCALE", "1.2")
+	os.Setenv("FYNE_SCALE", "1")
 
 	app := app.New()
 	window := app.NewWindow("senna")
@@ -44,6 +44,9 @@ func (ui *UI) Create() {
 	window.Resize(fyne.NewSize(1000, 500))
 	window.CenterOnScreen()
 	window.SetMaster()
+
+	// resource, _ := fyne.LoadResourceFromPath("resource/logo.ico")
+	// window.SetIcon(resource)
 
 	var home *HomeWidget = NewHomeWidget()
 	var event *EventLogWidget = NewEventLogWidget()

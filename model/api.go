@@ -38,7 +38,7 @@ type (
 				Type string `json:"type"`
 			} `json:"blocks"`
 			AssociatedMaps      []int         `json:"associatedMaps"`
-			AssociatedChampions []string      `json:"associatedChampions"`
+			AssociatedChampions []int         `json:"associatedChampions"`
 			PreferredItemSlots  []interface{} `json:"preferredItemSlots"`
 		} `json:"itemSets"`
 	}

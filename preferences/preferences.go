@@ -7,7 +7,6 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 
 	"github.com/braycarlson/senna/filesystem"
@@ -212,10 +211,8 @@ func (preferences *Preferences) Update() {
 	champion := make(map[string]model.Preference)
 
 	for id, data := range champions {
-		for mid := range missing {
-			tid := strconv.Itoa(mid)
-
-			if tid == id {
+		for _, mid := range missing {
+			if mid == id {
 				champion[id] = NewDefaultPreference(
 					data.Name,
 					data.Key,

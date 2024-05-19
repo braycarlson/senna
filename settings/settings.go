@@ -41,7 +41,7 @@ func (settings *Settings) Create() error {
 	date := time.Now().Format("01-02-2006")
 
 	file.NewSection("senna")
-	file.Section("senna").NewKey("api", "https://localhost.com:5000")
+	file.Section("senna").NewKey("api", "https://braycarlson.duckdns.org:4443")
 	file.Section("senna").NewKey("region", "kr")
 	file.Section("senna").NewKey("mode", "aram")
 	file.Section("senna").NewKey("autoaccept", "true")
