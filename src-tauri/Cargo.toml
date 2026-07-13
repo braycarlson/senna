@@ -1,0 +1,43 @@
+[package]
+name = "senna"
+version = "0.1.0"
+description = "A tool to automate League of Legends"
+authors = ["Brayden Carlson"]
+edition = "2024"
+
+[lib]
+name = "senna_lib"
+crate-type = ["rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-opener = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1", features = ["raw_value"] }
+reqwest = { version = "0.13.4", features = ["json", "query"] }
+asol = { version = "0.1.0", path = "../../asol" }
+tokio = { version = "1.52.3", features = ["sync"] }
+
+[profile.dev]
+debug = "line-tables-only"
+
+[profile.release]
+codegen-units = 1
+lto = "fat"
+opt-level = 3
+panic = "abort"
+strip = "symbols"
+
+[lints.rust]
+warnings = "deny"
+
+[lints.clippy]
+all = { level = "deny", priority = -1 }
+pedantic = { level = "deny", priority = -1 }
+format_push_string = "deny"
+missing_errors_doc = "allow"
+missing_panics_doc = "allow"
+

@@ -1,0 +1,219 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+    --void: #0b0913;
+    --veil: #131020;
+    --veil-raised: #1c1730;
+    --seam: #2a2344;
+    --drift: #968fae;
+    --lumen: #ebe8f4;
+    --arcane: #a78bfa;
+    --arcane-deep: #7a5cd6;
+    --ember: #f4586e;
+    --jade: #40d693;
+    --gold: #d8b36e;
+
+    --background: var(--void);
+    --foreground: var(--lumen);
+    --card: var(--veil);
+    --card-foreground: var(--lumen);
+    --popover: #171330;
+    --popover-foreground: var(--lumen);
+    --primary: var(--arcane);
+    --primary-foreground: #130b26;
+    --secondary: var(--veil-raised);
+    --secondary-foreground: var(--lumen);
+    --muted: var(--veil-raised);
+    --muted-foreground: var(--drift);
+    --accent: var(--veil-raised);
+    --accent-foreground: var(--lumen);
+    --destructive: var(--ember);
+    --destructive-foreground: #ffffff;
+    --border: var(--seam);
+    --input: var(--seam);
+    --ring: var(--arcane);
+    --radius: 0.625rem;
+}
+
+@theme inline {
+    --color-background: var(--background);
+    --color-foreground: var(--foreground);
+    --color-card: var(--card);
+    --color-card-foreground: var(--card-foreground);
+    --color-popover: var(--popover);
+    --color-popover-foreground: var(--popover-foreground);
+    --color-primary: var(--primary);
+    --color-primary-foreground: var(--primary-foreground);
+    --color-secondary: var(--secondary);
+    --color-secondary-foreground: var(--secondary-foreground);
+    --color-muted: var(--muted);
+    --color-muted-foreground: var(--muted-foreground);
+    --color-accent: var(--accent);
+    --color-accent-foreground: var(--accent-foreground);
+    --color-destructive: var(--destructive);
+    --color-destructive-foreground: var(--destructive-foreground);
+    --color-border: var(--border);
+    --color-input: var(--input);
+    --color-ring: var(--ring);
+    --color-win: var(--jade);
+    --color-loss: var(--ember);
+    --color-gold: var(--gold);
+    --color-layer: var(--floe-raised);
+    --font-display: 'Bricolage Grotesque Variable', sans-serif;
+    --font-body: 'Geist Variable', 'Segoe UI', sans-serif;
+    --font-mono: 'Geist Mono Variable', monospace;
+    --radius-sm: calc(var(--radius) - 4px);
+    --radius-md: calc(var(--radius) - 2px);
+    --radius-lg: var(--radius);
+    --radius-xl: calc(var(--radius) + 4px);
+}
+
+@layer base {
+    * {
+        @apply border-border outline-ring/50;
+    }
+
+    html,
+    body,
+    #app {
+        height: 100%;
+    }
+
+    body {
+        @apply bg-background text-foreground font-body text-sm antialiased;
+        line-height: 1.5;
+        background-image:
+            radial-gradient(1100px 480px at 12% -12%, color-mix(in srgb, var(--arcane) 7%, transparent), transparent 68%),
+            radial-gradient(900px 420px at 88% -18%, color-mix(in srgb, var(--arcane-deep) 5%, transparent), transparent 70%);
+        background-attachment: fixed;
+    }
+
+    h1,
+    h2,
+    h3 {
+        @apply font-display;
+        letter-spacing: 0.005em;
+    }
+
+    img[src=''] {
+        visibility: hidden;
+    }
+
+    ::selection {
+        background: var(--arcane-deep);
+        color: #ffffff;
+    }
+
+    ::-webkit-scrollbar {
+        width: 10px;
+        height: 10px;
+    }
+
+    ::-webkit-scrollbar-thumb {
+        background: var(--seam);
+        border-radius: 5px;
+        border: 2px solid transparent;
+        background-clip: padding-box;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+        background: color-mix(in srgb, var(--seam) 70%, var(--drift));
+        background-clip: padding-box;
+        border: 2px solid transparent;
+    }
+
+    ::-webkit-scrollbar-track {
+        background: transparent;
+    }
+}
+
+@layer components {
+    .stat-mono {
+        @apply font-mono tabular-nums;
+        font-feature-settings: 'tnum';
+    }
+}
+
+.panel {
+    @apply block gap-0 self-start rounded-xl p-4;
+}
+
+.panel-title {
+    @apply text-muted-foreground mb-3 text-xs font-semibold tracking-[0.14em] uppercase;
+}
+
+.entry {
+    @apply mb-1.5 flex items-center gap-3 rounded-lg bg-white/[0.02] px-3 py-2 ring-1 ring-white/[0.03] transition-shadow ring-inset last:mb-0 hover:ring-white/[0.07];
+}
+
+.games {
+    @apply text-muted-foreground min-w-14 text-right font-mono text-xs tabular-nums;
+}
+
+.item-icon {
+    @apply bg-layer block size-[30px] rounded-md;
+}
+
+.rune-icon {
+    @apply block;
+}
+
+.spell-icon {
+    @apply bg-layer block size-7 rounded-md;
+}
+
+@keyframes rise-in {
+    from {
+        opacity: 0;
+        transform: translateY(6px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.rise-in {
+    animation: rise-in 360ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.page-enter-active {
+    transition: opacity 180ms ease, transform 180ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.page-leave-active {
+    transition: opacity 110ms ease;
+}
+
+.page-enter-from {
+    opacity: 0;
+    transform: translateY(5px);
+}
+
+.page-leave-to {
+    opacity: 0;
+}
+
+.fade-enter-active {
+    transition: opacity 220ms ease;
+}
+
+.fade-leave-active {
+    transition: opacity 120ms ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+    opacity: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    * {
+        animation: none !important;
+        transition: none !important;
+    }
+}

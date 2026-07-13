@@ -1,21 +1,40 @@
-resource/
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
 
-# Binaries for programs and plugins
-*.exe
-*.exe~
-*.dll
-*.so
-*.dylib
+# Dependencies and build output
+node_modules
+dist
+dist-ssr
+*.local
 
-# Test binary, built with `go test -c`
-*.test
+# TypeScript / Vite caches
+*.tsbuildinfo
+.vite/
+vite.config.*.timestamp-*
+.eslintcache
 
-# Output of the go coverage tool, specifically when used with LiteIDE
-*.out
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
 
-# Configuration
-*.ini
-
-# Logging
-*.txt
-log/
+# OS
+.DS_Store
+._*
+Thumbs.db
+ehthumbs.db
+[Dd]esktop.ini
+$RECYCLE.BIN/
+*.stackdump
+*~

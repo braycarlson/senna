@@ -1,0 +1,4 @@
+# rust-lld links several times faster than link.exe; rustc puts its sysroot
+# tool directory on PATH when spawning the linker, so the bare name resolves.
+[target.x86_64-pc-windows-msvc]
+linker = "rust-lld.exe"
