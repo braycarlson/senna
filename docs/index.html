@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <meta name="description" content="senna is a League of Legends companion app built with Tauri, Rust, and Vue." />
+        <title>senna</title>
+        <style>
+            :root {
+                --background: #0e1015;
+                --panel: #171a21;
+                --border: #262a34;
+                --text: #e5e7eb;
+                --muted: #9ca3af;
+                --accent: #8b7cf6;
+            }
+
+            * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+            }
+
+            body {
+                background: var(--background);
+                color: var(--text);
+                font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+                line-height: 1.6;
+                min-height: 100vh;
+                display: flex;
+                justify-content: center;
+            }
+
+            main {
+                width: 100%;
+                max-width: 960px;
+                padding: 4rem 1.5rem;
+            }
+
+            h1 {
+                font-size: 2.25rem;
+                letter-spacing: -0.02em;
+            }
+
+            h1 span {
+                color: var(--accent);
+            }
+
+            .tagline {
+                color: var(--muted);
+                margin-top: 0.5rem;
+                font-size: 1.05rem;
+            }
+
+            .status {
+                display: inline-block;
+                margin-top: 1rem;
+                padding: 0.2rem 0.75rem;
+                border: 1px solid var(--border);
+                border-radius: 999px;
+                background: var(--panel);
+                color: var(--accent);
+                font-size: 0.85rem;
+            }
+
+            .screenshot {
+                display: block;
+                width: 100%;
+                margin-top: 2.5rem;
+                border: 1px solid var(--border);
+                border-radius: 12px;
+            }
+
+            .links {
+                margin-top: 2rem;
+            }
+
+            .links a {
+                color: var(--accent);
+                text-decoration: none;
+            }
+
+            .links a:hover {
+                text-decoration: underline;
+            }
+
+            footer {
+                margin-top: 3rem;
+                color: var(--muted);
+                font-size: 0.85rem;
+            }
+        </style>
+    </head>
+    <body>
+        <main>
+            <h1><span>senna</span></h1>
+            <p class="tagline">
+                A League of Legends companion app: champion builds, rune pages, tier lists,
+                and live match insight, built with Tauri, Rust, and Vue.
+            </p>
+            <span class="status">Proof of concept</span>
+
+            <img
+                class="screenshot"
+                src="senna.png"
+                alt="senna home view showing a summoner profile, live match panel, spells, rune page, and recent matches"
+            />
+
+            <p class="links">
+                <a href="https://github.com/braycarlson/senna">Source on GitHub</a>
+            </p>
+
+            <footer>
+                senna is not endorsed by Riot Games and does not reflect the views or opinions of
+                Riot Games or anyone officially involved in producing or managing League of Legends.
+            </footer>
+        </main>
+    </body>
+</html>
