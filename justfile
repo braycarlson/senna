@@ -12,5 +12,8 @@ check:
 dev:
     bun run tauri dev
 
+pages:
+    python -m http.server 8000 -d docs
+
 web:
     bun run dev

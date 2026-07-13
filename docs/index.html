@@ -9,10 +9,12 @@
             :root {
                 --background: #0e1015;
                 --panel: #171a21;
+                --panel-hover: #1c202a;
                 --border: #262a34;
                 --text: #e5e7eb;
                 --muted: #9ca3af;
                 --accent: #8b7cf6;
+                --accent-soft: #b4a9fa;
             }
 
             * {
@@ -34,33 +36,92 @@
             main {
                 width: 100%;
                 max-width: 960px;
-                padding: 4rem 1.5rem;
+                padding: 4rem 1.5rem 3rem;
+            }
+
+            .hero {
+                position: relative;
+                padding-bottom: 2.5rem;
+            }
+
+            .hero::before {
+                content: "";
+                position: absolute;
+                top: -6rem;
+                left: 50%;
+                width: 40rem;
+                height: 20rem;
+                transform: translateX(-50%);
+                background: radial-gradient(closest-side, rgba(139, 124, 246, 0.18), transparent);
+                pointer-events: none;
+                z-index: -1;
             }
 
             h1 {
-                font-size: 2.25rem;
+                font-size: 2.5rem;
+                line-height: 1;
                 letter-spacing: -0.02em;
             }
 
-            h1 span {
-                color: var(--accent);
+            .wordmark {
+                background: linear-gradient(120deg, var(--accent), var(--accent-soft));
+                -webkit-background-clip: text;
+                background-clip: text;
+                -webkit-text-fill-color: transparent;
             }
 
             .tagline {
                 color: var(--muted);
-                margin-top: 0.5rem;
-                font-size: 1.05rem;
+                margin-top: 0.75rem;
+                font-size: 1.1rem;
+                max-width: 44rem;
+            }
+
+            .meta {
+                display: flex;
+                align-items: center;
+                gap: 1rem;
+                margin-top: 1.5rem;
+                flex-wrap: wrap;
             }
 
             .status {
                 display: inline-block;
-                margin-top: 1rem;
-                padding: 0.2rem 0.75rem;
+                vertical-align: middle;
+                margin-left: 1rem;
+                line-height: 1;
+                padding: 0.35rem 0.75rem;
                 border: 1px solid var(--border);
                 border-radius: 999px;
                 background: var(--panel);
                 color: var(--accent);
                 font-size: 0.85rem;
+                font-weight: 400;
+            }
+
+            .cta {
+                display: inline-flex;
+                align-items: center;
+                gap: 0.5rem;
+                padding: 0.5rem 1.1rem;
+                border: 1px solid var(--accent);
+                border-radius: 8px;
+                background: var(--accent);
+                color: #0e1015;
+                font-size: 0.9rem;
+                font-weight: 600;
+                text-decoration: none;
+                transition: background 0.15s ease, transform 0.15s ease;
+            }
+
+            .cta:hover {
+                background: var(--accent-soft);
+                transform: translateY(-1px);
+            }
+
+            .cta svg {
+                width: 1.1rem;
+                height: 1.1rem;
             }
 
             .screenshot {
@@ -71,34 +132,99 @@
                 border-radius: 12px;
             }
 
-            .links {
-                margin-top: 2rem;
+            .features {
+                margin-top: 3.5rem;
+                display: grid;
+                grid-template-columns: repeat(3, 1fr);
+                gap: 1rem;
             }
 
-            .links a {
+            .feature {
+                padding: 1.5rem;
+                border: 1px solid var(--border);
+                border-radius: 12px;
+                background: var(--panel);
+                transition: background 0.15s ease, border-color 0.15s ease;
+            }
+
+            .feature:hover {
+                background: var(--panel-hover);
+                border-color: var(--accent);
+            }
+
+            .feature svg {
+                width: 1.5rem;
+                height: 1.5rem;
                 color: var(--accent);
-                text-decoration: none;
             }
 
-            .links a:hover {
-                text-decoration: underline;
+            .feature h3 {
+                margin-top: 0.9rem;
+                font-size: 1.05rem;
+                letter-spacing: -0.01em;
+            }
+
+            .feature p {
+                margin-top: 0.4rem;
+                color: var(--muted);
+                font-size: 0.92rem;
+            }
+
+            .built {
+                margin-top: 3rem;
+                color: var(--muted);
+                font-size: 0.95rem;
+            }
+
+            .built strong {
+                color: var(--text);
+                font-weight: 600;
             }
 
             footer {
                 margin-top: 3rem;
+                padding-top: 1.5rem;
+                border-top: 1px solid var(--border);
                 color: var(--muted);
                 font-size: 0.85rem;
+            }
+
+            @media (max-width: 720px) {
+                main {
+                    padding: 2.5rem 1.25rem;
+                }
+
+                h1 {
+                    font-size: 2rem;
+                }
+
+                .features {
+                    grid-template-columns: 1fr;
+                }
             }
         </style>
     </head>
     <body>
         <main>
-            <h1><span>senna</span></h1>
-            <p class="tagline">
-                A League of Legends companion app: champion builds, rune pages, tier lists,
-                and live match insight, built with Tauri, Rust, and Vue.
-            </p>
-            <span class="status">Proof of concept</span>
+            <section class="hero">
+                <h1>
+                    <span class="wordmark">senna</span>
+                    <span class="status">Proof of concept</span>
+                </h1>
+                <p class="tagline">
+                    A League of Legends companion app: champion builds, rune pages, tier lists,
+                    and live match insight, built with Tauri, Rust, and Vue.
+                </p>
+
+                <div class="meta">
+                    <a class="cta" href="https://github.com/braycarlson/senna">
+                        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                            <path d="M12 .5C5.37.5 0 5.87 0 12.5c0 5.3 3.44 9.8 8.21 11.39.6.11.82-.26.82-.58 0-.29-.01-1.04-.02-2.05-3.34.73-4.04-1.61-4.04-1.61-.55-1.39-1.34-1.76-1.34-1.76-1.09-.75.08-.73.08-.73 1.2.09 1.84 1.24 1.84 1.24 1.07 1.83 2.81 1.3 3.5.99.11-.78.42-1.3.76-1.6-2.67-.3-5.47-1.33-5.47-5.93 0-1.31.47-2.38 1.24-3.22-.12-.3-.54-1.52.12-3.17 0 0 1.01-.32 3.3 1.23a11.5 11.5 0 0 1 6 0c2.29-1.55 3.3-1.23 3.3-1.23.66 1.65.24 2.87.12 3.17.77.84 1.24 1.91 1.24 3.22 0 4.61-2.81 5.62-5.49 5.92.43.37.81 1.1.81 2.22 0 1.61-.01 2.9-.01 3.29 0 .32.22.7.83.58C20.56 22.3 24 17.8 24 12.5 24 5.87 18.63.5 12 .5z" />
+                        </svg>
+                        Source on GitHub
+                    </a>
+                </div>
+            </section>
 
             <img
                 class="screenshot"
@@ -106,8 +232,68 @@
                 alt="senna home view showing a summoner profile, live match panel, spells, rune page, and recent matches"
             />
 
-            <p class="links">
-                <a href="https://github.com/braycarlson/senna">Source on GitHub</a>
+            <section class="features">
+                <article class="feature">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M12 2 2 7l10 5 10-5-10-5z" />
+                        <path d="m2 17 10 5 10-5" />
+                        <path d="m2 12 10 5 10-5" />
+                    </svg>
+                    <h3>Champion builds</h3>
+                    <p>Items and skill order for every champion, ready before the game loads.</p>
+                </article>
+
+                <article class="feature">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <circle cx="12" cy="12" r="9" />
+                        <circle cx="12" cy="12" r="3" />
+                    </svg>
+                    <h3>Rune pages</h3>
+                    <p>Import complete rune pages straight into the League client in one action.</p>
+                </article>
+
+                <article class="feature">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M3 3v18h18" />
+                        <path d="m7 14 4-4 3 3 5-6" />
+                    </svg>
+                    <h3>Tier lists</h3>
+                    <p>Ranked by win rate, with movers highlighting what climbed or fell this patch.</p>
+                </article>
+
+                <article class="feature">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M2 12h4l2 6 4-14 2 8h8" />
+                    </svg>
+                    <h3>Live match insight</h3>
+                    <p>A cockpit that reads champion select and the live game as it happens.</p>
+                </article>
+
+                <article class="feature">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M12 2v4" />
+                        <path d="M12 18v4" />
+                        <path d="m4.9 4.9 2.9 2.9" />
+                        <path d="m16.2 16.2 2.9 2.9" />
+                        <path d="M2 12h4" />
+                        <path d="M18 12h4" />
+                        <circle cx="12" cy="12" r="3" />
+                    </svg>
+                    <h3>Loadout automation</h3>
+                    <p>Summoner spells, item sets, and runes pushed to the client automatically.</p>
+                </article>
+
+                <article class="feature">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                    </svg>
+                    <h3>Local and private</h3>
+                    <p>Talks to the League Client API on your machine. No login, no external servers.</p>
+                </article>
+            </section>
+
+            <p class="built">
+                Built with <strong>Tauri</strong>, <strong>Rust</strong>, and <strong>Vue 3</strong>.
             </p>
 
             <footer>
