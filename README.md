@@ -1,4 +1,4 @@
 # senna
-A tool to automate League of Legends
+A companion app for League of Legends
 
 ![senna home view](docs/senna.png)
